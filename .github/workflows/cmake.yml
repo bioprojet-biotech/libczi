@@ -27,7 +27,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install dependencies (Windows)
-        if: ${{ (matrix.OS == 'windows-latest') }}
+        if: ${{ (matrix.os == 'windows-latest') }}
         # on Windows, we rely on vcpkg to pull in dependencies
         shell: bash
         run: |
@@ -49,10 +49,11 @@ jobs:
           vcpkg install rapidjson 'curl[ssl]' --triplet arm64-windows-static
 
       - name: Install dependencies (Linux)
-        if: ${{ (matrix.OS == 'ubuntu-latest') }}
+        if: ${{ (matrix.os == 'ubuntu-latest') }}
         # on Linux, we use apt to get our dependencies
         shell: bash
         run: |
+          sudo apt-get update
           sudo apt-get install zlib1g-dev -y
           sudo apt-get install libpng-dev -y
           sudo apt-get install libfreetype6-dev -y
@@ -66,7 +67,7 @@ jobs:
           npm install --location=global azurite
 
       - name: Configure CMake (Windows x64)
-        if: ${{ (matrix.OS == 'windows-latest') }}
+        if: ${{ (matrix.os == 'windows-latest') }}
         shell: pwsh
         run: |
           # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
@@ -76,7 +77,7 @@ jobs:
           cmake -B "${{github.workspace}}/build" -A x64 -DCMAKE_BUILD_TYPE=${{matrix.build}} -DLIBCZI_BUILD_CZICMD=ON -DLIBCZI_BUILD_CURL_BASED_STREAM=ON -DLIBCZI_BUILD_AZURESDK_BASED_STREAM=ON -DLIBCZI_BUILD_PREFER_EXTERNALPACKAGE_LIBCURL=ON -DLIBCZI_BUILD_LIBCZIAPI=ON -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x64-windows-static
 
       - name: Configure CMake (Windows ARM64)
-        if: ${{ (matrix.OS == 'windows-latest') }}
+        if: ${{ (matrix.os == 'windows-latest') }}
         shell: pwsh
         run: |
           # Configure for a cross-compilation to ARM64.
@@ -97,23 +98,23 @@ jobs:
               -DADDITIONAL_LIBS_REQUIRED_FOR_ATOMIC=
 
       - name: Configure CMake (Linux)
-        if: ${{ (matrix.OS == 'ubuntu-latest') }}
+        if: ${{ (matrix.os == 'ubuntu-latest') }}
         shell: bash
         run: |
           cmake -B "${{github.workspace}}/build" -DCMAKE_BUILD_TYPE=${{matrix.build}} -DLIBCZI_BUILD_CZICMD=ON -DLIBCZI_BUILD_CURL_BASED_STREAM=ON -DLIBCZI_BUILD_PREFER_EXTERNALPACKAGE_LIBCURL=OFF -DLIBCZI_BUILD_AZURESDK_BASED_STREAM=ON -DLIBCZI_BUILD_LIBCZIAPI=ON -DCMAKE_TOOLCHAIN_FILE="${VCPKG_INSTALLATION_ROOT}/scripts/buildsystems/vcpkg.cmake"
 
       - name: Build (Linux)
-        if: ${{ (matrix.OS == 'ubuntu-latest') }}
+        if: ${{ (matrix.os == 'ubuntu-latest') }}
         shell: bash
         run: cmake --build ${{github.workspace}}/build --config ${{matrix.build}} -j
 
       - name: Build (Windows x64)
-        if: ${{ (matrix.OS == 'windows-latest') }}
+        if: ${{ (matrix.os == 'windows-latest') }}
         shell: pwsh
         run: cmake --build ${{github.workspace}}/build --config ${{matrix.build}} -j
 
       - name: Build (Windows ARM64)
-        if: ${{ (matrix.OS == 'windows-latest') }}
+        if: ${{ (matrix.os == 'windows-latest') }}
         shell: pwsh
         run: cmake --build ${{github.workspace}}/arm64build --config ${{matrix.build}} -j
 
@@ -155,7 +156,7 @@ jobs:
 
       - name: Prepare CZICmd as artifact (Windows x64)
         working-directory: ${{github.workspace}}/build
-        if: ${{ (matrix.OS == 'windows-latest') && (matrix.build == 'Release') }}
+        if: ${{ (matrix.os == 'windows-latest') && (matrix.build == 'Release') }}
         shell: bash
         run: |
           mkdir release
@@ -167,7 +168,7 @@ jobs:
 
       - name: Upload CZICmd as artifact (Linux)
         working-directory: ${{github.workspace}}/build
-        if: ${{ (matrix.OS == 'ubuntu-latest') && (matrix.build == 'Release') }}
+        if: ${{ (matrix.os == 'ubuntu-latest') && (matrix.build == 'Release') }}
         shell: bash
         run: |
           mkdir release
@@ -178,7 +179,7 @@ jobs:
           echo "artifactPath=${{github.workspace}}/build/release/${name}" >> "$GITHUB_ENV"
 
       - name: Upload artifacts
-        if: ${{ ( (matrix.OS == 'windows-latest') || (matrix.OS == 'ubuntu-latest') ) && (matrix.build == 'Release') }}
+        if: ${{ ( (matrix.os == 'windows-latest') || (matrix.os == 'ubuntu-latest') ) && (matrix.build == 'Release') }}
         uses: actions/upload-artifact@v4
         with:
           path: ${{ env.artifactPath }}/
@@ -186,7 +187,7 @@ jobs:
 
       - name: Prepare CZICmd as artifact (Windows ARM64)
         working-directory: ${{github.workspace}}/arm64build
-        if: ${{ (matrix.OS == 'windows-latest') && (matrix.build == 'Release') }}
+        if: ${{ (matrix.os == 'windows-latest') && (matrix.build == 'Release') }}
         shell: bash
         run: |
           mkdir release
@@ -197,7 +198,7 @@ jobs:
           echo "artifactPath=${{github.workspace}}/arm64build/release/${name}" >> "$GITHUB_ENV"
 
       - name: Upload artifacts (Windows ARM64)
-        if: ${{ (matrix.OS == 'windows-latest') && (matrix.build == 'Release') }}
+        if: ${{ (matrix.os == 'windows-latest') && (matrix.build == 'Release') }}
         uses: actions/upload-artifact@v4
         with:
           path: ${{ env.artifactPath }}/
@@ -205,13 +206,13 @@ jobs:
 
       # Coverage collection based on https://about.codecov.io/blog/how-to-set-up-codecov-with-c-plus-plus-and-github-actions/
       - name: Prepare Coverage
-        if: ${{ (matrix.OS == 'windows-latest') && (matrix.build == 'Debug') }}
+        if: ${{ (matrix.os == 'windows-latest') && (matrix.build == 'Debug') }}
         run: |
           choco install OpenCppCoverage -y --no-progress
           echo "C:\Program Files\OpenCppCoverage" >> "$env:GITHUB_PATH"
 
       - name: Get Coverage
-        if: ${{ (matrix.OS == 'windows-latest') && (matrix.build == 'Debug') }}
+        if: ${{ (matrix.os == 'windows-latest') && (matrix.build == 'Debug') }}
         working-directory: ${{github.workspace}}/build/Src/libCZI_UnitTests/${{matrix.build}}
         shell: cmd
         run: OpenCppCoverage.exe --export_type cobertura:${{github.workspace}}\coverage.xml --config_file "${{github.workspace}}\opencppcoverage.txt" -- libCZI_UnitTests.exe
@@ -219,7 +220,7 @@ jobs:
       - name: Upload Coverage
         uses: codecov/codecov-action@v4
         # Note: we want to upload coverage only for the upstream-repository, not for forks
-        if: ${{ (github.repository == 'ZEISS/libczi') && (matrix.OS == 'windows-latest') && (matrix.build == 'Debug') }}
+        if: ${{ (github.repository == 'ZEISS/libczi') && (matrix.os == 'windows-latest') && (matrix.build == 'Debug') }}
         with:
           files: ./coverage.xml
           fail_ci_if_error: true
